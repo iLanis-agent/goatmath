@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GoatMath</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 760px; margin: 0 auto; padding: 1em; color: #2e2a24; background: #faf6ee; }
+  h1 { font-size: 1.5em; }
+  .card { background: #fff; border: 1px solid #e3d9c6; border-radius: 10px; padding: 1em 1.2em; margin: 1em 0; }
+  .card h2 { margin-top: 0; font-size: 1.1em; }
+  label { display: inline-block; min-width: 170px; margin: 0.3em 0; }
+  input, select { padding: 0.3em; border: 1px solid #c9bda5; border-radius: 6px; width: 110px; }
+  .out { background: #f3ecdd; border-left: 4px solid #5d4a2f; padding: 0.6em 0.9em; border-radius: 0 8px 8px 0; margin-top: 0.7em; }
+  .preset { display:inline-block; margin: 0 0.4em 0.4em 0; padding: 0.25em 0.7em; background: #e8dfca; border-radius: 20px; cursor: pointer; font-size: 0.85em; border: 1px solid #c9bda5; }
+  .note { color: #6b6154; font-size: 0.9em; }
+  a { color: #5d4a2f; }
+</style>
+</head>
+<body>
+<h1>&#128016; GoatMath</h1>
+<p class="note">Constants: never keep one goat. 200 sq ft outdoor and 18 sq ft shelter per goat. Hay at 3.5% of body weight daily, 50 lb small square bales. Lactation 305 days averaging 65% of peak. Fence: 4 ft woven wire minimum. <a href="index.html">About</a></p>
+
+<div class="card">
+  <h2>1. Herd and space</h2>
+  <div>
+    <span class="preset" data-g="2">Two dwarfs</span>
+    <span class="preset" data-g="3">Three does</span>
+    <span class="preset" data-g="1">Just one (no)</span>
+  </div>
+  <label for="goats">Goats:</label><input id="goats" type="number" value="2" min="1">
+  <div class="out" id="spaceOut">-</div>
+  <div class="out" id="herdOut">-</div>
+</div>
+
+<div class="card">
+  <h2>2. Winter hay</h2>
+  <label for="body">Body weight (lb):</label><input id="body" type="number" value="75" min="20"><br>
+  <label for="days">Winter days on hay:</label><input id="days" type="number" value="150" min="0"><br>
+  <label for="bale">Bale weight (lb):</label><input id="bale" type="number" value="50" min="10"><br>
+  <label for="storage">Dry storage (sq ft):</label><input id="storage" type="number" value="80" min="0">
+  <div class="out" id="hayOut">-</div>
+</div>
+
+<div class="card">
+  <h2>3. Milk, honestly</h2>
+  <label for="breed">Breed:</label>
+  <select id="breed">
+    <option value="nigerian" selected>Nigerian dwarf</option>
+    <option value="nubian">Nubian</option>
+    <option value="saanen">Saanen</option>
+  </select><br>
+  <label for="peak">Peak yield (qt/day):</label><input id="peak" type="number" value="1.5" step="0.25" min="0">
+  <div class="out" id="milkOut">-</div>
+</div>
+
+<div class="card">
+  <h2>4. Cost per gallon</h2>
+  <label for="hayCost">Hay for the year ($):</label><input id="hayCost" type="number" value="200" min="0"><br>
+  <label for="grainCost">Grain on the stand ($):</label><input id="grainCost" type="number" value="180" min="0"><br>
+  <label for="miscCost">Vet, minerals, bedding ($):</label><input id="miscCost" type="number" value="100" min="0">
+  <div class="out" id="costOut">-</div>
+</div>
+
+<div class="card">
+  <h2>5. Fence check</h2>
+  <label for="fenceH">Fence height (ft):</label><input id="fenceH" type="number" value="4" step="0.5" min="0"><br>
+  <label for="fenceT">Type:</label>
+  <select id="fenceT">
+    <option value="woven" selected>Woven wire</option>
+    <option value="electric">Multi-strand electric</option>
+    <option value="wood rail">Wood rail</option>
+    <option value="chain link">Chain link</option>
+  </select>
+  <div class="out" id="fenceOut">-</div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  function str(id) { return document.getElementById(id).value; }
+  function fmt(n, d) { return n.toFixed(d === undefined ? 1 : d); }
+
+  function update() {
+    var g = Math.max(1, Math.round(num('goats')));
+    var sp = GoatMath.spaceSqft(g);
+    document.getElementById('spaceOut').textContent =
+      g + ' goats: ' + sp.outdoor + ' sq ft outdoor, ' + sp.shelter + ' sq ft of shelter - the paddock, not the backyard fantasy.';
+    document.getElementById('herdOut').textContent = GoatMath.herdVerdict(g);
+
+    var w = GoatMath.winterHay(g, num('body'), num('days'), Math.max(1, num('bale')));
+    document.getElementById('hayOut').textContent =
+      fmt(w.totalLb, 0) + ' lb of hay, about ' + fmt(w.bales, 1) + ' bales (' + Math.ceil(w.bales) + ' to buy). ' +
+      GoatMath.hayVerdict(w.bales, num('storage'));
+
+    var gal = GoatMath.milkGal(num('peak'), 305, 0.65);
+    document.getElementById('milkOut').textContent =
+      'One lactation: about ' + fmt(gal, 0) + ' gallons (' + fmt(gal * 4, 0) + ' quarts) at an honest 65% of peak. ' +
+      GoatMath.milkVerdict(str('breed'));
+
+    var perGal = GoatMath.costPerGal(num('hayCost'), num('grainCost'), num('miscCost'), Math.max(0.1, gal));
+    document.getElementById('costOut').textContent =
+      '$' + fmt(perGal, 2) + ' per gallon, doe not included. ' + GoatMath.costVerdict(perGal);
+
+    document.getElementById('fenceOut').textContent = GoatMath.fenceVerdict(num('fenceH'), str('fenceT'));
+  }
+
+  var presets = document.querySelectorAll('.preset');
+  for (var i = 0; i < presets.length; i++) {
+    presets[i].addEventListener('click', function () {
+      document.getElementById('goats').value = this.getAttribute('data-g');
+      if (this.getAttribute('data-g') === '2') { document.getElementById('body').value = 75; document.getElementById('peak').value = 1.5; }
+      if (this.getAttribute('data-g') === '3') { document.getElementById('body').value = 140; document.getElementById('peak').value = 3; }
+      update();
+    });
+  }
+  var inputs = document.querySelectorAll('input, select');
+  for (var j = 0; j < inputs.length; j++) inputs[j].addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
